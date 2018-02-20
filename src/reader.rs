@@ -91,7 +91,7 @@ impl Reader {
     }
 
     pub fn parse_options(&mut self, options: &ArgMatches) {
-        let mut option = self.option.write().unwrap();
+        let mut option = self.option.write().expect("reader:parse_options: failed to lock option");
         option.parse_options(options);
     }
 
@@ -115,7 +115,7 @@ impl Reader {
             match ev {
                 Event::EvReaderRestart => {
                     // close existing command or file if exists
-                    let (cmd, query, force_update) = *arg.downcast::<(String, String, bool)>().unwrap();
+                    let (cmd, query, force_update) = *arg.downcast::<(String, String, bool)>().expect("reader:EvReaderRestart: failed to get argument");
                     if !force_update && cmd == last_command && query == last_query { continue; }
 
                     // restart command with new `command`
@@ -155,7 +155,7 @@ impl Reader {
                     // stop existing command
                     tx_reader.take().map(|tx| {tx.send(true)});
                     thread_reader.take().map(|thrd| {thrd.join()});
-                    let tx_ack: Sender<usize> = *arg.downcast().unwrap();
+                    let tx_ack: Sender<usize> = *arg.downcast().expect("reader:EvActAccept: failed to get argument");
                     let _ = tx_ack.send(0);
                 }
 
@@ -196,7 +196,7 @@ fn reader(cmd: &str,
 
     debug!("reader:reader: called");
     let (command, mut source): (Option<Child>, Box<BufRead>) = if source_file.is_some() {
-        (None, Box::new(BufReader::new(source_file.unwrap())))
+        (None, Box::new(BufReader::new(source_file.expect("reader: input file not available"))))
     } else {
         get_command_output(cmd).expect("command not found")
     };
@@ -228,15 +228,15 @@ fn reader(cmd: &str,
         }
     });
 
-    let opt = option.read().unwrap();
+    let opt = option.read().expect("reader: failed to lock option");
 
     // set the proper run number
-    let run_num = {*RUN_NUM.read().unwrap()};
+    let run_num = {*RUN_NUM.read().expect("reader: failed to lock RUN_NUM")};
     let run_num = *NUM_MAP.write()
-            .unwrap()
+            .expect("reader: failed to lock NUM_MAP")
             .entry(cmd.to_string())
             .or_insert_with(|| {
-                *(RUN_NUM.write().unwrap()) = run_num + 1;
+                *(RUN_NUM.write().expect("reader: failed to lock RUN_NUM for write")) = run_num + 1;
                 run_num + 1
             });
 

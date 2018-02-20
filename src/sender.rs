@@ -63,7 +63,7 @@ impl CachedSender {
                     }
 
                     Event::EvReaderNewItem => {
-                        self.items.push(*arg.downcast::<ItemGroup>().unwrap());
+                        self.items.push(*arg.downcast::<ItemGroup>().expect("sender:EvReaderNewItem: failed to get argument"));
                     }
 
                     _ => {}
